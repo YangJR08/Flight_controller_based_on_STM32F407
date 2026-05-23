@@ -93,7 +93,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   //实现串口日志输出打印
-  printf("Hello, STM32F407!\r\n");
+  debug_printf("Hello, STM32F407!\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */

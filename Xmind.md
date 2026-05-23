@@ -17,7 +17,40 @@
 `origin`之前用`git remote add`设置的远程仓库别名（代表 GitHub 上的飞控仓库）
 `main`要上传的本地分支名（就是刚重命名的主分支）
 ## 串口输出打印
-使用串口1
+1、使用串口1
 CubeMX中配置串口1
 `User label` P_TX P_RX
 添加公共层`Commom`，并在里面添加`Com_debug.c`完成`int fputc(int ch, FILE *f)`重定向
+CMake + GCC/newlib的 `printf` 实际走的是 `_write()`，而 `_write()` 又调用弱符号 `__io_putchar()`
+所以需要重定向`__io_putchar()`
+代码展示
+```c
+// 将 newlib 的底层输出重定向到串口（printf 通过 _write -> __io_putchar 走这里）
+int __io_putchar(int ch)
+{
+    uint8_t c = (uint8_t)ch;
+
+    // 兼容终端换行显示
+    if (c == '\n')
+    {
+        uint8_t cr = '\r';
+        HAL_UART_Transmit(&huart1, &cr, 1, 1000);
+    }
+
+    HAL_UART_Transmit(&huart1, &c, 1, 1000);
+    return ch;
+}
+
+// 兼容直接调用 fputc 的代码
+int fputc(int ch, FILE *f)
+{
+    (void)f;
+    return __io_putchar(ch);
+}
+```
+2、使用宏定义完成串口输出行号和文件名
+`#define debug_printf(format, ...) printf("[%s:%d]" format, __FILE__, __LINE__, ##__VA_ARGS__)`
+3、串口在cpu上占用资源
+比如波特率`115200 Bits/s` 起始位1位，停止位1位，无校验位，数据位8位，这样算下来一字节数据就是10位。
+`Hello world！`12个字节，一个字符一字节，12*10=120位，120/115200=0.0010416666666667s=1.04毫秒
+所以后续调试完成之后需要关闭日志输出，所以需要加入宏定义开关
