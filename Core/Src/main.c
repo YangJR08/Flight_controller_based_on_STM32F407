@@ -18,15 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32f407xx.h"
-#include "stm32f4xx_hal_uart.h"
 #include "usart.h"
 #include "gpio.h"
-#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Com_debug.h"
+#include "APP_FreeRTOS_Task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,6 +92,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
   //实现串口日志输出打印
   debug_printf("Hello, STM32F407!\r\n");
+
+//启动FreeRTOS调度器
+  APP_FreeRTOS_Task_Start();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */

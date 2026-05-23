@@ -54,3 +54,19 @@ int fputc(int ch, FILE *f)
 比如波特率`115200 Bits/s` 起始位1位，停止位1位，无校验位，数据位8位，这样算下来一字节数据就是10位。
 `Hello world！`12个字节，一个字符一字节，12*10=120位，120/115200=0.0010416666666667s=1.04毫秒
 所以后续调试完成之后需要关闭日志输出，所以需要加入宏定义开关
+## 移植FreeRTOS
+工程下面创建FreeRTOS文件夹
+“FreeRTOS\”创建portable文件夹，用来适配不同芯片的
+1、复制需要使用到的源代码文件
+“..\FreeRTOS-LTS\FreeRTOS\FreeRTOS-Kernel”目录下所有.c文件到FreeRTOS文件夹
+“..\FreeRTOS-LTS\FreeRTOS\FreeRTOS-Kernel\include”复制include整个文件到FreeRTOS文件夹
+选择与芯片/工具链匹配的port目录复制到FreeRTOS\portable（如Cortex-M4F + GCC用 portable\GCC\ARM_CM4F\port.c 与 portmacro.h）
+“..\FreeRTOS-LTS\FreeRTOS\FreeRTOS-Kernel\portable\MemMang”内存管理选择一个实现（如heap_4.c）复制到FreeRTOS\portable
+FreeRTOSConfig.h 优先从对应Demo工程拿一份做基础，再按芯片时钟/中断优先级/是否MPU等修改；没有Demo时才用 template_configuration 作为起点
+2、修改相应中断
+`pednsv`、`SVC`中断进行宏替换，在FreeRTOSConfig.h中
+```c
+#define xPortPendSVHandler   PendSV_Handler
+#define vPortSVCHandler     SVC_Handler
+```
+systick中调用`xPortSysTickHandler( void );`

@@ -2,7 +2,8 @@
 #include <stdio.h>
 
 
-static UART_HandleTypeDef *s_debug_uart = &huart1;
+// 默认串口用于重定向打印输出；可通过DEBUG_DEFAULT_UART宏进行修改。
+static UART_HandleTypeDef *s_debug_uart = &DEBUG_DEFAULT_UART;
 
 void Debug_SetUart(UART_HandleTypeDef *huart)
 {
