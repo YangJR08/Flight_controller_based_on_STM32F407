@@ -70,3 +70,23 @@ FreeRTOSConfig.h 优先从对应Demo工程拿一份做基础，再按芯片时�
 #define vPortSVCHandler     SVC_Handler
 ```
 systick中调用`xPortSysTickHandler( void );`
+
+## 电源管理任务
+### 芯片介绍
+1、电源管理芯片IP5305T的逻辑：物理按键，短按一次开机，1s内连续两次短按关机，自动管理锂电池充放电
+2、IP5305T输出电压是5V，用一个ldo5V-3.3V
+3、检测到长时间低功耗，会关机
+### 代码逻辑
+因为低压工作关机，24-40s内低功耗会关机
+所以需要我们GPIO口输出一个低电平，记得配置开漏输出避免短路
+创建任务，在任务里面10s触发一次，用`vTaskDelayUntil(&xLastWakeTime, 10000);`精确延时
+GPIO按下拉低电平100ms后恢复
+```c
+#define POWER_KEY_Pin GPIO_PIN_15
+#define POWER_KEY_GPIO_Port GPIOB
+```
+## 电机控制模块
+用PWM波来控制电机转速，因为电机有惯性，所以可以用PWM来控制
+使用定时器1，HCLK时钟168MHz，定时器1时钟也是168MHz，PSC设置为2+1，所以定时器时钟为56Mhz。
+ARR重装载值是999+1；占空比初始值200。
+

@@ -56,6 +56,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     FreeRTOS/portable/port.c
     FreeRTOS/portable/heap_4.c
     APP/APP_FreeRTOS_Task.c
+    Interface/int_IP5305T.c
+    Interface/int_motor.c
 )
 
 # Add include paths
@@ -66,6 +68,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     FreeRTOS
     FreeRTOS/portable
     APP/
+    Interface/
 )
 
 # Add project symbols (macros)
