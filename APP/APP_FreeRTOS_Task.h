@@ -6,6 +6,8 @@
 #include "Com_debug.h"
 #include "int_IP5305T.h"
 #include "int_motor.h"
+#include "int_LED.h"
+#include "Com_config.h"
 
 #define FreeRTOStest 0 // 1：启用实时操作系统测试任务，0：禁用
 

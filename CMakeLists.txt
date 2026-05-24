@@ -58,6 +58,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     APP/APP_FreeRTOS_Task.c
     Interface/int_IP5305T.c
     Interface/int_motor.c
+    Interface/int_LED.c
+    Commom/Com_config.c
 )
 
 # Add include paths
