@@ -59,6 +59,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Interface/int_IP5305T.c
     Interface/int_motor.c
     Interface/int_LED.c
+    Interface/int_SI24R1.c
     Commom/Com_config.c
 )
 
@@ -70,7 +71,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     FreeRTOS
     FreeRTOS/portable
     APP/
-    Interface/
+    Interface/Interface_H
 )
 
 # Add project symbols (macros)

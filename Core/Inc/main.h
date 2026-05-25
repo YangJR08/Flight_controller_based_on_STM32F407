@@ -71,6 +71,10 @@ void Error_Handler(void);
 #define P_RX_GPIO_Port GPIOA
 #define T_RI_LED_Pin GPIO_PIN_10
 #define T_RI_LED_GPIO_Port GPIOC
+#define SI_EN_Pin GPIO_PIN_6
+#define SI_EN_GPIO_Port GPIOB
+#define SPI1_NSS_Pin GPIO_PIN_7
+#define SPI1_NSS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
