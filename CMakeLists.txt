@@ -56,6 +56,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     FreeRTOS/portable/port.c
     FreeRTOS/portable/heap_4.c
     APP/APP_FreeRTOS_Task.c
+    APP/APP_mutex.c
+    APP/APP_receive_data.c
     Interface/int_IP5305T.c
     Interface/int_motor.c
     Interface/int_LED.c

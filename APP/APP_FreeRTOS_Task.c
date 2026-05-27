@@ -1,4 +1,5 @@
 #include "APP_FreeRTOS_Task.h"
+#include "APP_mutex.h"
 #include "Com_config.h"
 #include "Com_debug.h"
 #include <stdint.h>
@@ -36,6 +37,15 @@ void LED_task(void *pvParameters);   //创建LED灯控任务
 TaskHandle_t LED_task_Handle = NULL; //LED灯控任务的句柄，可以用来操作任务，如删除、挂起等
 #define LED_TASK_DELAY_MS 100 // LED灯控任务的延时周期，单位为毫秒
 
+//通讯任务
+void com_task(void *pvParameters); //创建通讯任务
+#define COM_TASK_STACK_SIZE 128 //通讯任务的栈空间大小，单位为字（4字节为1字）
+#define COM_TASK_PRIORITY 2   //通讯任务的优先级，数值越大
+//优先级越高，范围从0到configMAX_PRIORITIES-1
+TaskHandle_t com_task_Handle = NULL;  //通讯任务的句柄，可以用来操作任务，如删除、挂起等    
+//任务延时周期，单位为毫秒
+#define COM_TASK_DELAY_MS 6
+
 //void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName);
 
 
@@ -61,6 +71,7 @@ TaskHandle_t task2Handle = NULL;
 */
 void APP_FreeRTOS_Task_Start(void)
 {
+    APP_Mutex_Init();
     //创建任务
     //1、创建电源管理任务
     xTaskCreate(power_task, "power_task", POWER_TASK_STACK_SIZE, NULL, POWER_TASK_PRIORITY, &power_task_Handle);
@@ -68,7 +79,8 @@ void APP_FreeRTOS_Task_Start(void)
     xTaskCreate(flight_control_task, "flight_control_task", FLIGHT_CONTROL_TASK_STACK_SIZE, NULL, FLIGHT_CONTROL_TASK_PRIORITY, &flight_control_task_Handle);
     //3、创建LED灯控任务
     xTaskCreate(LED_task, "LED_task", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, &LED_task_Handle);
-
+    //4、创建通讯任务
+    xTaskCreate(com_task, "com_task", COM_TASK_STACK_SIZE, NULL, COM_TASK_PRIORITY, &com_task_Handle);
     #if FreeRTOStest
     //移植freertos测试代码，创建两个任务，每个任务每秒打印一次自己的信息。
     xTaskCreate(task1, "Task1", TASK1_STACK_SIZE, NULL, TASK1_PRIORITY, &task1Handle);
@@ -155,6 +167,24 @@ void LED_task(void *pvParameters)
             led_toggle_count = 0; 
         }
         vTaskDelayUntil(&xLastWakeTime, LED_TASK_DELAY_MS);
+    }
+}
+
+/*
+通讯任务
+*/
+uint8_t com_data[TX_PLOAD_WIDTH+1] = {0}; // 定义一个全局发送缓冲区，大小为TX_PLOAD_WIDTH字节，初始值为0
+
+void com_task(void *pvParameters)
+{
+    //获取基准时间
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    while(1)
+    {
+        //任务接收数据并且解析
+        APP_receive_data();
+
+        vTaskDelayUntil(&xLastWakeTime, COM_TASK_DELAY_MS);
     }
 }
 

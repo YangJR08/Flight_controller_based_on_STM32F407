@@ -1,6 +1,6 @@
 #include "int_SI24R1.h"
-#include "stm32f4xx_hal_spi.h"
-#include <stdint.h>
+
+
 
 //定义一个静态发送地址，5字节宽度，内容为0x0A01070E01,发送设备和接收设备都使用这个地址进行通信
 uint8_t TX_ADDRESS[TX_ADR_WIDTH] = {0x0A,0x01,0x07,0x0E,0x01};  // 定义一个静态发送地址
@@ -15,6 +15,28 @@ static uint8_t SPI_RW(uint8_t byte)
 	return rx_data;
 }
 
+uint8_t si24r1_rx_buff[5] = {0}; // 定义一个全局接收缓冲区，大小为5字节，初始值为0
+
+
+uint8_t Int_SI24R1_Check(void)
+{
+	//芯片bug，SI24R1需要先读取一次，保证SPI正常后才能进行后续的读写操作
+	SPI_RW(0);
+
+	//测试spi能否正常读写寄存器
+	Int_SI24R1_Write_Buf(SI24R1_WRITE_REG + TX_ADDR, TX_ADDRESS, TX_ADR_WIDTH);
+	//读取寄存器值进行验证
+	Int_SI24R1_Read_Buf(SI24R1_READ_REG + TX_ADDR, si24r1_rx_buff, TX_ADR_WIDTH);
+	for (uint8_t i =0; i<TX_ADR_WIDTH; i++) {
+		// 处理接收到的数据
+		if (si24r1_rx_buff[i] != TX_ADDRESS[i]) {
+			debug_printf("SI24R1 SPI communication test failed. Expected: %02X, Received: %02X\r\n", TX_ADDRESS[i], si24r1_rx_buff[i]);
+			return 1; // 测试失败
+		}
+	}
+	return 0; // 测试成功
+}
+
 
 /**
  * @brief 硬件接口层SI24R1的初始化
@@ -22,7 +44,23 @@ static uint8_t SPI_RW(uint8_t byte)
  */
 void Int_SI24R1_Init(void)
 {
+	//上电延时还未启动FreeRTOS调度器之前的代码，所以直接使用vTaskDelay会导致系统卡死，改为HAL_Delay函数进行延时
+	HAL_Delay(200); // 上电后等待200ms，确保SI24R1稳定
+	uint8_t check_count = 0; // 定义一个检查计数器，记录连续测试失败的次数
+	while(Int_SI24R1_Check() != 0) 
+	{
+		HAL_Delay(10); // 每次测试失败后等待10ms再重试，避免过快的重试导致系统负载过高
+		debug_printf("SI24R1 SPI communication test failed. Please check the connections and try again.\r\n");
+		if (++check_count > 10) // 连续测试失败超过10次，提示用户检查连接
+		{
+			debug_printf("SI24R1 SPI communication test failed multiple times. Please check the connections and try again.\r\n");
+			return; // 退出初始化函数，避免进入死循环
+		}
+	}
 
+	//设置默认状态为接收模式，发送数据时再切换到发送模式
+	Int_SI24R1_RX_Mode();
+	debug_printf("SI24R1 SPI communication test passed. SI24R1 initialized successfully.\r\n");
 }
 
 
@@ -156,7 +194,7 @@ void Int_SI24R1_TX_Mode(void)
 返回  值：0:接收到数据
           1:没有接收到数据
 *********************************************************/
-uint8_t SI24R1_RxPacket(uint8_t *rxbuf)
+uint8_t Int_SI24R1_RxPacket(uint8_t *rxbuf)
 {
 	uint8_t state;
 	//将读取到的状态寄存器值写回状态寄存器，清除RX_DR中断标志，和芯片设计有关
@@ -191,6 +229,7 @@ uint8_t Int_SI24R1_TxPacket(uint8_t *txbuf)
 	while((state & TX_DS) == 0 && (state & MAX_RT) == 0)
 	{
 		state = Int_SI24R1_Read_Reg(STATUS);  								//读取状态寄存器的值
+		vTaskDelay(1); // 等待1ms，避免freertos任务饿死
 	}	   
 	Int_SI24R1_Write_Reg(SI24R1_WRITE_REG+STATUS, state); 		//清除TX_DS或MAX_RT中断标志
 	if(state&MAX_RT)															//达到最大重发次数

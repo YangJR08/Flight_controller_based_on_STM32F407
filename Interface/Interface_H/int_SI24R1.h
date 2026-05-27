@@ -3,6 +3,9 @@
 
 #include "main.h"
 #include "spi.h"
+#include "Com_debug.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 
 #define SI24RI_SPI  hspi1// 定义使用的SPI外设句柄，根据实际情况修改
@@ -18,7 +21,7 @@
 
 
 #define TX_ADR_WIDTH   5  				// 5字节宽度的发送/接收地址
-#define TX_PLOAD_WIDTH 32  				// 数据通道有效数据宽度
+#define TX_PLOAD_WIDTH 20  				// 数据通道有效数据宽度
 #define CHANNEL        40  				// RF通道号，范围0~125
 
 //********************************************************************************************************************//
