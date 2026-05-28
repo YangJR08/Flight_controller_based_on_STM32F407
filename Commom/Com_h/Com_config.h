@@ -19,11 +19,21 @@ typedef enum{
     FLIGHT_FALLING,    // 故障
 } Flight_State;
 
+//油门解锁状态
+typedef enum{
+    FREE = 0, 
+    MAX,
+    LEAV_MAX,
+    MIN,
+    UNLOCK,
+} Throttle_State;
+
 
 //封装飞机状态
 typedef struct{
     Remote_State remote_state; // 当前连接状态
     Flight_State flight_state; // 当前飞行状态
+    Throttle_State throttle_state; // 当前油门解锁状态
 } Aircraft_State;
 
 #endif // COM_CONFIG_H

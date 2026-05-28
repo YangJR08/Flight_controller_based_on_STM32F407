@@ -10,7 +10,8 @@
 //用封装后的结构体来表示飞机状态，方便后续扩展
 Aircraft_State aircraft_state = {
     .remote_state = REMOTE_DISCONNECTED,    // 初始状态为遥控器未连接
-    .flight_state = FLIGHT_IDLE // 初始状态为空闲
+    .flight_state = FLIGHT_IDLE, // 初始状态为空闲
+    .throttle_state = FREE // 初始状态为油门未解锁
 };
 
 #if FreeRTOStest
@@ -96,7 +97,7 @@ void APP_FreeRTOS_Task_Start(void)
 void power_task(void *pvParameters)
 {//创建电源管理任务
     //获取基准时间
-    TickType_t xLastWakeTime = xTaskGetTickCount();
+    //TickType_t xLastWakeTime = xTaskGetTickCount();
     while(1)
     {
         //避免开机时真实按键和电源任务短时间内同时触发造成关机，先延时10S
@@ -206,9 +207,10 @@ void com_task(void *pvParameters)
             //使用Freertos中的直接任务通知，比信号量更高效，适合单一事件的通知
             xTaskNotifyGive(power_task_Handle);
             //重置关机指令，避免重复触发
-            remote_data.shutdown = 0;
+            //remote_data.shutdown = 0;//也可以不用清0遥控端会自动清0，这样就不需要担心重复触发的问题了
         }
-
+        //处理飞机飞行状态
+        APP_process_flight_state();
         vTaskDelayUntil(&xLastWakeTime, COM_TASK_DELAY_MS);
     }
 }

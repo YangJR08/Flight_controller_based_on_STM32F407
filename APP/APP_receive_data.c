@@ -1,4 +1,7 @@
 #include "APP_receive_data.h"
+#include "APP_FreeRTOS_Task.h"
+#include "Com_config.h"
+#include <stdint.h>
 
 
 Remote_Data remote_data = {0}; // 定义一个全局变量来存储接收到的遥控数据
@@ -6,6 +9,8 @@ Remote_Data remote_data = {0}; // 定义一个全局变量来存储接收到的�
 //定义数组来存储接收到的数据，大小为TX_PLOAD_WIDTH字节，初始值为0
 uint8_t receive_buffer[TX_PLOAD_WIDTH] = {0};
 
+static uint32_t max_state_start_time = 0; // 记录进入MAX状态的时间
+static uint32_t min_state_start_time = 0; // 记录进入MIN状态的时间
 //宏定义帧头
 #define FRAME_HEADER_1 'Y'
 #define FRAME_HEADER_2 'J'
@@ -90,4 +95,123 @@ void APP_connection_state(uint8_t connection_status)
         }
     }
 
+}
+
+//解锁静态函数,飞机状态解锁逻辑，0表示解锁成功，1表示解锁失败
+static uint8_t APP_process_unlock(void)
+{   //考虑安全问题，解锁条件，解锁完成最终状态，应该是油门为0，避免直接起飞
+    switch (aircraft_state.throttle_state) {
+        case FREE:
+            if (remote_data.throttle >= 900) {
+                aircraft_state.throttle_state = MAX;
+                max_state_start_time = xTaskGetTickCount(); // 记录进入MAX状态的时间
+            }
+            break;
+        case MAX:
+            // MAX状态下的处理逻辑
+            //记录持续时间，要求油门持续在MAX状态超过一定时间才认为是解锁成功，避免偶尔一次达到MAX状态就解锁了
+            if (remote_data.throttle <= 900) 
+            {
+                if (xTaskGetTickCount()-max_state_start_time >= pdMS_TO_TICKS(1000)) // 持续时间超过1秒，认为解锁成功
+                {
+                    //油门保持最高状态操作1s
+                    aircraft_state.throttle_state =LEAV_MAX;
+                }
+                else {
+                    //油门没有保持最高状态操作1s，认为解锁失败，重置状态
+                    aircraft_state.throttle_state = FREE;
+                }
+            }
+            break;
+        case LEAV_MAX:
+            // LEAV_MAX状态下的处理逻辑
+            if (remote_data.throttle <= 100) {
+                //油门回到最低状态，认为解锁成功
+                aircraft_state.throttle_state = MIN;
+                min_state_start_time = xTaskGetTickCount(); // 记录进入MIN状态的时间
+            }
+            break;
+        case MIN:
+            // MIN状态下的处理逻辑
+            // 记录持续时间，要求油门持续在MIN状态超过一定时间才认为是解锁成功，避免偶尔一次达到MIN状态就解锁了
+            if (xTaskGetTickCount()-min_state_start_time >= pdMS_TO_TICKS(1000)) // 持续时间超过1秒，认为解锁成功
+            { 
+                //油门保持最低状态操作1s，认为解锁成功
+                aircraft_state.throttle_state = UNLOCK;
+            }
+            else {
+                if (aircraft_state.throttle_state > 100) 
+                {
+                //油门没有保持最低状态操作1s，认为解锁失败，重置状态
+                aircraft_state.throttle_state = FREE;
+                }
+            }
+            break;
+        case UNLOCK:
+            // 解锁状态下的处理逻辑
+            break;
+        default:
+            break;
+    }
+    if (aircraft_state.throttle_state == UNLOCK) {
+        return 0; // 解锁成功
+    }
+
+    return 1; // 这里直接返回1表示解锁失败，实际应用中可以添加更多的解锁条件和逻辑，如接收特定的解锁指令、验证安全码等
+    
+}
+
+
+//处理飞行状态函数，根据接收到的遥控数据来判断当前飞行状态
+void APP_process_flight_state(void)
+{
+    //使用状态机逻辑实现
+    //1、使用轮询的方式，根据接收到的遥控数据来判断当前飞行状态，但本身Freertos任务就是轮询的
+    switch (aircraft_state.flight_state) 
+    {   //2、只需要编写指向其他状态得代码即可
+        case FLIGHT_IDLE:
+            if  (APP_process_unlock() == 0) 
+            {
+                aircraft_state.flight_state = FLIGHT_NORMAL;
+                aircraft_state.throttle_state = FREE; // 解锁成功后更新油门状态
+            }
+            break;
+        case FLIGHT_NORMAL:
+            //3、普通状态进入定高状态和故障状态
+            if (remote_data.altitude > 1)
+            {
+                aircraft_state.flight_state = FLIGHT_HEIGHT;
+                remote_data.altitude = 0; // 定高状态下不再处理定高值，避免干扰飞行控制算法
+            }
+            //故障状态的判断
+            else if (aircraft_state.remote_state == REMOTE_DISCONNECTED)
+            {
+                aircraft_state.flight_state = FLIGHT_FALLING;
+            }
+            break;
+        case FLIGHT_HEIGHT:
+            {
+                //取消定高状态
+                if (remote_data.altitude == 1)
+                {
+                    aircraft_state.flight_state = FLIGHT_NORMAL;
+                    remote_data.altitude = 0;
+                }
+                //定高状态下的故障判断
+               if (aircraft_state.remote_state == REMOTE_DISCONNECTED)
+               {
+                    aircraft_state.flight_state = FLIGHT_FALLING;
+                }
+            }
+            break;
+        case FLIGHT_FALLING:
+            {
+                //处理失联故障缓慢停止电机，后续实现
+
+                aircraft_state.flight_state = FLIGHT_IDLE; // 这里直接切换回空闲状态，实际应用中可以添加更多的故障处理逻辑，如触发降落伞、发送警报等
+            }
+            break;
+        default:
+            break;
+    }
 }

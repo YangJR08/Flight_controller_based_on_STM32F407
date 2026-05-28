@@ -29,4 +29,7 @@ uint8_t APP_receive_data(void);
 //connection_status:1表示遥控器未连接，0表示遥控器已连接,APP_receive_data函数的返回值
 void APP_connection_state(uint8_t connection_status);
 
+//处理飞行状态函数，根据接收到的遥控数据来判断当前飞行状态
+void APP_process_flight_state(void);
+
 #endif // APP_RECEIVE_DATA_H
