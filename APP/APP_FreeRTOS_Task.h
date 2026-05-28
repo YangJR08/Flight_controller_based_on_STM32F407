@@ -13,7 +13,7 @@
 
 #define FreeRTOStest 0 // 1：启用实时操作系统测试任务，0：禁用
 
-
+extern Aircraft_State aircraft_state; // 声明一个全局变量来存储飞机状态，定义在APP_FreeRTOS_Task.c中
 /*
 启动FreeRTOS操作系统
 */

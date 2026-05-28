@@ -9,5 +9,8 @@
 //避免IP5305T自动关机
 void IP5305T_Init(void);
 
+//关机函数
+void IP5305T_Shutdown(void);
+
 
 #endif

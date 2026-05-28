@@ -68,3 +68,26 @@ uint8_t APP_receive_data(void)
     
     return 0; // 返回0表示接收到数据且校验通过
 }
+
+
+//处理连接状态函数
+//connection_status:1表示遥控器未连接，0表示遥控器已连接,APP_receive_data函数的返回值
+void APP_connection_state(uint8_t connection_status)
+{
+    if(connection_status == 0)
+    {
+        //遥控器已连接，更新状态变量
+        aircraft_state.remote_state = REMOTE_CONNECTED;
+    }
+    else if(connection_status == 1)
+    {   //需要有一个重试次数，有可能只是不稳点造成短暂未收到数据，避免因为偶尔一次接收失败就认为遥控器未连接
+        static uint8_t retry_count = 0; // 定义一个静态变量来记录连续接收失败的次数
+        retry_count++;
+        if (retry_count > R_MAX_RETRY_COUNT) // 连续接收失败超过最大重试次数，认为遥控器未连接
+        {
+            aircraft_state.remote_state = REMOTE_DISCONNECTED;
+            retry_count = 0; // 重置计数器
+        }
+    }
+
+}

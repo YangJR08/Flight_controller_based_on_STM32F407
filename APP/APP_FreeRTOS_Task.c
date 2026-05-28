@@ -2,14 +2,16 @@
 #include "APP_mutex.h"
 #include "Com_config.h"
 #include "Com_debug.h"
+#include "int_IP5305T.h"
 #include <stdint.h>
 
 
-//表示当前连接状态
-Remote_State remote_state = REMOTE_DISCONNECTED; // 初始状态为遥控器已断开
-//飞行状态
-Flight_State flight_state = FLIGHT_IDLE; // 初始状态为飞行器空闲
 
+//用封装后的结构体来表示飞机状态，方便后续扩展
+Aircraft_State aircraft_state = {
+    .remote_state = REMOTE_DISCONNECTED,    // 初始状态为遥控器未连接
+    .flight_state = FLIGHT_IDLE // 初始状态为空闲
+};
 
 #if FreeRTOStest
 void task1(void *pvParameters);
@@ -98,9 +100,21 @@ void power_task(void *pvParameters)
     while(1)
     {
         //避免开机时真实按键和电源任务短时间内同时触发造成关机，先延时10S
-        vTaskDelayUntil(&xLastWakeTime, POWER_TASK_DELAY_MS);
+        //vTaskDelayUntil(&xLastWakeTime, POWER_TASK_DELAY_MS);
         //执行电源管理任务的功能
-        IP5305T_Init();
+        //IP5305T_Init();
+        //使用直接任务接收的方式来执行10s的延时，等待关机指令的通知
+        //一直等通知或者者等10s，哪个先到达,有信号来了就执行关机操作，没有信号来就继续等待
+        uint32_t ulNotification = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(POWER_TASK_DELAY_MS));
+        if(ulNotification == 1)
+        {
+            //收到关机通知，执行关机操作
+            IP5305T_Shutdown();
+        }
+        else {
+            //执行正常的电源管理功能
+            IP5305T_Init();
+        }
     }
 }
 
@@ -128,13 +142,13 @@ void LED_task(void *pvParameters)
     {
         led_toggle_count++;
         //前两个灯判断当前连接状态
-        if(remote_state == REMOTE_CONNECTED)
+        if(aircraft_state.remote_state == REMOTE_CONNECTED)
         {
             //遥控器已连接，点亮前两个LED灯
             Int_LED_On(&LED_con[T_LF_LED]);
             Int_LED_On(&LED_con[T_RI_LED]);
         }
-        else if(remote_state == REMOTE_DISCONNECTED)
+        else if(aircraft_state.remote_state == REMOTE_DISCONNECTED)
         {
             //遥控器已断开，灭前两个LED灯
             Int_LED_Off(&LED_con[T_LF_LED]);
@@ -143,19 +157,19 @@ void LED_task(void *pvParameters)
 
 
         //后两个灯判断当前飞行状态
-        if(flight_state == FLIGHT_IDLE&&led_toggle_count%5==0)
+        if(aircraft_state.flight_state == FLIGHT_IDLE&&led_toggle_count%5==0)
         {
             //飞行器空闲，后两个灯慢闪烁，500ms翻转一次
             Int_LED_Toggle(&LED_con[D_LF_LED]);
             Int_LED_Toggle(&LED_con[D_RI_LED]);
         }
-        else if((flight_state == FLIGHT_NORMAL || flight_state == FLIGHT_HEIGHT)&&(led_toggle_count%2==0))
+        else if((aircraft_state.flight_state == FLIGHT_NORMAL || aircraft_state.flight_state == FLIGHT_HEIGHT)&&(led_toggle_count%2==0))
         {
             //正常飞行或定高中飞行，后两个LED灯快闪烁，200ms翻转一次
              Int_LED_Toggle(&LED_con[D_LF_LED]);
              Int_LED_Toggle(&LED_con[D_RI_LED]);
         }
-        else if(flight_state == FLIGHT_FALLING)
+        else if(aircraft_state.flight_state == FLIGHT_FALLING)
         {
             //故障，后面两个灯灭
             Int_LED_Off(&LED_con[D_LF_LED]);
@@ -182,7 +196,18 @@ void com_task(void *pvParameters)
     while(1)
     {
         //任务接收数据并且解析
-        APP_receive_data();
+        uint8_t result = APP_receive_data();
+        //处理连接状态
+        APP_connection_state(result);
+        //判断关机指令，如果收到关机指令，执行关机操作
+        if(remote_data.shutdown == 1)
+        {
+            //将关机操作放到电源任务中，这里负责通知
+            //使用Freertos中的直接任务通知，比信号量更高效，适合单一事件的通知
+            xTaskNotifyGive(power_task_Handle);
+            //重置关机指令，避免重复触发
+            remote_data.shutdown = 0;
+        }
 
         vTaskDelayUntil(&xLastWakeTime, COM_TASK_DELAY_MS);
     }

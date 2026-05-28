@@ -111,4 +111,46 @@ ARR重装载值是999+1；占空比初始值200。
 ### 完成数据解析
 保证和遥控器传输的数据一致性解析，高位在前
 
+## 飞行器连接状态
+定义了
+```c
+//表示当前连接状态
+typedef enum{
+    REMOTE_CONNECTED = 0, // 遥控器已连接
+    REMOTE_DISCONNECTED,  // 遥控器已断开
+} Remote_State;
 
+//飞行状态
+typedef enum{
+    FLIGHT_IDLE = 0, // 飞行器空闲
+    FLIGHT_NORMAL,      // 正常飞行
+    FLIGHT_HEIGHT,     // 定高中飞行
+    FLIGHT_FALLING,    // 故障
+} Flight_State;
+
+
+//封装飞机状态
+typedef struct{
+    Remote_State remote_state; // 当前连接状态
+    Flight_State flight_state; // 当前飞行状态
+} Aircraft_State;
+```
+最后是`Aircraft_State`这样一个全局变量，最后修改这个全局变量就可以更新飞行状态的值，因为这个只有一个地方存在修改可以不用加互斥锁。
+### 关机命令
+收到关机命令执行电源的关机操作
+在通讯任务中解析关机指令，为了任务架构不混乱，将关机这个操作放在电源任务中执行
+所以需要用到` xTaskNotifyGive(power_task_Handle);`,并且在电源任务中等待这个通知，` uint32_t ulNotification = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(POWER_TASK_DELAY_MS));`1代表有信号执行关机操作，0代表没有信号，就一直等待10s执行电源启动任务避免低功耗关机。
+## 处理飞机不同状态
+引入状态机，按键或者摇杆数量有限，但是可以根据状态机，每处于不同状态，按键和摇杆能有不同的表达
+先画状态机图，罗列不同状态，然后状态和状态之间转换
+```mermaid
+stateDiagram-v2
+    [*] --> 空闲
+    空闲 --> 普通: 解锁
+    普通 --> 空闲: 降落
+    普通 --> 故障: 遥控失联
+    普通 --> 定高: 定高
+    定高 --> 普通: 取消定高
+    定高 --> 故障: 遥控失联
+    故障 --> 空闲: 降落
+```

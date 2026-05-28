@@ -20,4 +20,10 @@ typedef enum{
 } Flight_State;
 
 
+//封装飞机状态
+typedef struct{
+    Remote_State remote_state; // 当前连接状态
+    Flight_State flight_state; // 当前飞行状态
+} Aircraft_State;
+
 #endif // COM_CONFIG_H
