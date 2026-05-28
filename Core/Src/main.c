@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "i2c.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
@@ -93,6 +94,8 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM1_Init();
   MX_SPI1_Init();
+  MX_I2C1_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
   //实现串口日志输出打印
   debug_printf("Hello, STM32F407!\r\n");

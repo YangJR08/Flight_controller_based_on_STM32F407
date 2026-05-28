@@ -62,6 +62,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Interface/int_motor.c
     Interface/int_LED.c
     Interface/int_SI24R1.c
+    Interface/int_mpu6050.c
     Commom/Com_config.c
 )
 
