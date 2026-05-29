@@ -3,8 +3,8 @@
 #include "Com_config.h"
 #include <stdint.h>
 
-
-Remote_Data remote_data = {0}; // 定义一个全局变量来存储接收到的遥控数据
+//yaw，pit，roll初始值500
+Remote_Data remote_data = {.throttle=0,.yaw=500, .pitch=500, .roll=500, .altitude=0, .shutdown=0 }; // 定义一个全局变量来存储接收到的遥控数据
 
 //定义数组来存储接收到的数据，大小为TX_PLOAD_WIDTH字节，初始值为0
 uint8_t receive_buffer[TX_PLOAD_WIDTH] = {0};

@@ -10,6 +10,7 @@
 #include "Com_config.h"
 #include "int_SI24R1.h"
 #include "APP_receive_Data.h"
+#include "APP_Flight.h"
 
 #define FreeRTOStest 0 // 1：启用实时操作系统测试任务，0：禁用
 

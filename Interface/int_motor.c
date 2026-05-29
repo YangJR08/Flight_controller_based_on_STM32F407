@@ -17,6 +17,7 @@ void Int_motor_start(Motor_Struct *motor)
         debug_printf("无电机结构体参数");
         return;
     }
+    __HAL_TIM_SET_COMPARE(motor->htim, motor->channel, 0);
     HAL_TIM_PWM_Start(motor->htim, motor->channel);
 }
 

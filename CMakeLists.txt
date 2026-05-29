@@ -46,6 +46,10 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     Commom/Com_debug.c
+    Commom/Com_delay.c
+    Commom/Com_filter.c
+    Commom/Com_imu.c
+    Commom/Com_pid.c
     FreeRTOS/croutine.c
     FreeRTOS/event_groups.c
     FreeRTOS/list.c
@@ -58,6 +62,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     APP/APP_FreeRTOS_Task.c
     APP/APP_mutex.c
     APP/APP_receive_data.c
+    APP/APP_Flight.c
     Interface/int_IP5305T.c
     Interface/int_motor.c
     Interface/int_LED.c

@@ -121,15 +121,16 @@ void power_task(void *pvParameters)
 
 void flight_control_task(void *pvParameters)
 {//创建飞行控制任务
+    APP_Flight_Init();
     //获取基准时间
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while(1)
     {
+        //1、获取飞行任务三轴角速度和三轴加速度数据
+        APP_Flight_Get_euler_angel();
+        APP_flight_pid_process();
         //执行飞行控制任务的功能
-        Int_motor_set_speed(&motor_con[MOTOR_LEFT_UP]);
-        Int_motor_set_speed(&motor_con[MOTOR_LEFT_DOWN]);
-        Int_motor_set_speed(&motor_con[MOTOR_RIGHT_UP]);
-        Int_motor_set_speed(&motor_con[MOTOR_RIGHT_DOWN]);
+        APP_flight_control_motor();
         vTaskDelayUntil(&xLastWakeTime, FLIGHT_CONTROL_TASK_DELAY_MS);
     }
 }
