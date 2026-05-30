@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "APP_mutex.h"
 #include <string.h>
+#include "int_VL53L1X.h"
 
 //遥控数据定义，保持和遥控器发送的数据格式一致，方便解析
 typedef struct
@@ -20,6 +21,7 @@ typedef struct
 //最大重试次数
 #define R_MAX_RETRY_COUNT 5
 extern Remote_Data remote_data; // 定义一个全局变量来存储遥控数据，定义在APP_receive_data.c中
+extern uint16_t fix_height_target; 
 
 //接收遥控数据并且解析
 //返回值：0:接收到数据校验通过，1:没有接收到数据，或者校验失败

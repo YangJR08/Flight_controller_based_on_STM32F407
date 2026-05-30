@@ -16,6 +16,9 @@ static uint32_t min_state_start_time = 0; // 记录进入MIN状态的时间
 #define FRAME_HEADER_2 'J'
 #define FRAME_HEADER_3 'R'
 
+//定义变量按下定高之后的飞行高度也就是目标高度
+uint16_t fix_height_target = 0; // 假设定高值
+
 //接收遥控数据并且解析
 //返回值：0:接收到数据校验通过，1:没有接收到数据，或者校验失败
 uint8_t APP_receive_data(void)
@@ -182,6 +185,7 @@ void APP_process_flight_state(void)
             {
                 aircraft_state.flight_state = FLIGHT_HEIGHT;
                 remote_data.altitude = 0; // 定高状态下不再处理定高值，避免干扰飞行控制算法
+                fix_height_target = Int_VL53L1X_GetDistance(); // 获取当前高度作为定高目标值
             }
             //故障状态的判断
             else if (aircraft_state.remote_state == REMOTE_DISCONNECTED)

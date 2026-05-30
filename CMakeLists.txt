@@ -68,6 +68,11 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Interface/int_LED.c
     Interface/int_SI24R1.c
     Interface/int_mpu6050.c
+    Interface/int_VL53L1X.c
+    Interface/fix_height/int_VL53L1X.c
+    Interface/fix_height/vl53l1_platform.c
+    Interface/fix_height/VL53L1X_api.c
+    Interface/fix_height/VL53L1X_calibration.c
     Commom/Com_config.c
 )
 
@@ -80,6 +85,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     FreeRTOS/portable
     APP/
     Interface/Interface_H
+    Interface/fix_height
 )
 
 # Add project symbols (macros)

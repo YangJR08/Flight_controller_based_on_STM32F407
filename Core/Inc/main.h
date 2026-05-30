@@ -63,6 +63,8 @@ void Error_Handler(void);
 #define D_LF_LED_GPIO_Port GPIOA
 #define D_RI_LED_Pin GPIO_PIN_11
 #define D_RI_LED_GPIO_Port GPIOB
+#define VX_XSHUT_Pin GPIO_PIN_12
+#define VX_XSHUT_GPIO_Port GPIOB
 #define POWER_KEY_Pin GPIO_PIN_15
 #define POWER_KEY_GPIO_Port GPIOB
 #define P_TX_Pin GPIO_PIN_9

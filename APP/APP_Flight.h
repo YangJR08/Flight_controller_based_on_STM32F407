@@ -9,6 +9,7 @@
 #include "Com_imu.h"
 #include "Com_pid.h"
 #include "APP_FreeRTOS_Task.h"
+#include "int_VL53L1X.h"
 
 //飞控任务初始化，包括mpu6050和电机
 void APP_Flight_Init(void);
@@ -21,5 +22,8 @@ void APP_flight_pid_process(void);
 
 //根据PID的输出来控制电机的速度
 void APP_flight_control_motor(void);
+
+// 定高PID处理函数
+void APP_flight_fix_height_pid_process(void);
 
 #endif // APP_FLIGHT_H

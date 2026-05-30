@@ -91,6 +91,19 @@ PID_TypeDef yaw_rate_pid = {
     .integral = 0.0f,
     .output = 0.0f
 };
+
+//定高PID结构体
+PID_TypeDef fix_height_pid = {
+    .kp = -0.5f, // 比例增益
+    .ki = 0.0f, // 积分增益
+    .kd = -0.2f, // 微分增益
+    .error = 0.0f,
+    .desire = 0.0f,
+    .measure = 0.0f,
+    .last_error = 0.0f,
+    .integral = 0.0f,
+    .output = 0.0f
+};
 /*-------PID------*/
 
 void APP_Flight_Init(void)
@@ -102,6 +115,8 @@ void APP_Flight_Init(void)
     {
         Int_motor_start(&motor_con[i]);
     }
+    //3、初始化激光测距仪
+    Int_VL53L1X_Init();
 
 }
 
@@ -200,31 +215,13 @@ void APP_flight_control_motor(void)
             motor_con[MOTOR_RIGHT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output + roll_rate_pid.output + yaw_rate_pid.output;
             break;
         case FLIGHT_HEIGHT:
-            //定高中飞行，保持一定的高度，电机速度根据高度误差来调整，这里我们假设定高值为1米，实际应用中可以根据需要来设置定高值
-            if(remote_data.altitude > 1)
-            {
-                //高度过高，降低电机速度
-                for(int i=0;i<MOTOR_NUM;i++)
-                {
-                    motor_con[i].duty_cycle = remote_data.throttle - 50; // 这里假设我们降低50的占空比来降低高度，实际应用中可以根据需要来调整这个值
-                }
-            }
-            else if(remote_data.altitude < 1)
-            {
-                //高度过低，提高电机速度
-                for(int i=0;i<MOTOR_NUM;i++)
-                {
-                    motor_con[i].duty_cycle = remote_data.throttle + 50; // 这里假设我们提高50的占空比来提高高度，实际应用中可以根据需要来调整这个值
-                }
-            }
-            else
-            {
-                //高度合适，保持当前电机速度
-                for(int i=0;i<MOTOR_NUM;i++)
-                {
-                    motor_con[i].duty_cycle = remote_data.throttle;
-                }
-            }
+            //定高飞行，在正常飞行的基础上叠加定高PID的输出
+            //定高PID的输出直接加到油门上，作为高度误差的补偿值
+            yaw_rate_pid.output = Com_Limit(yaw_rate_pid.output, -100, 100);
+            motor_con[MOTOR_LEFT_UP].duty_cycle = remote_data.throttle + pitch_rate_pid.output - roll_rate_pid.output + yaw_rate_pid.output + fix_height_pid.output;
+            motor_con[MOTOR_LEFT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output - roll_rate_pid.output - yaw_rate_pid.output + fix_height_pid.output;
+            motor_con[MOTOR_RIGHT_UP].duty_cycle = remote_data.throttle + pitch_rate_pid.output + roll_rate_pid.output - yaw_rate_pid.output + fix_height_pid.output;
+            motor_con[MOTOR_RIGHT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output + roll_rate_pid.output + yaw_rate_pid.output + fix_height_pid.output;
             break;
         case FLIGHT_FALLING:
 
@@ -246,4 +243,17 @@ void APP_flight_control_motor(void)
             Int_motor_set_speed(&motor_con[i]);
         }
     }
+}
+
+
+// 定高PID处理函数
+void APP_flight_fix_height_pid_process(void)
+{
+    //24ms一次
+    //填写目标值，按下定高键时的值时目标值，测量值就是当前高度
+    fix_height_pid.desire = fix_height_target;
+    fix_height_pid.measure = Int_VL53L1X_GetDistance();
+
+    //进行单环pid计算，输出作为高度误差的补偿值，直接加到油门上
+    Com_PID_Calculate(&fix_height_pid);
 }

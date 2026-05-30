@@ -122,6 +122,7 @@ void power_task(void *pvParameters)
 void flight_control_task(void *pvParameters)
 {//创建飞行控制任务
     APP_Flight_Init();
+    uint8_t count = 0; // 用于控制距离判断执行频率
     //获取基准时间
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while(1)
@@ -130,6 +131,18 @@ void flight_control_task(void *pvParameters)
         APP_Flight_Get_euler_angel();
         APP_flight_pid_process();
         //执行飞行控制任务的功能
+        //定高判断
+        if (aircraft_state.flight_state == FLIGHT_HEIGHT)
+        {
+            count++;
+            if (count >= 4)
+            {
+                count = 0;
+                APP_flight_fix_height_pid_process();
+            }
+        
+        }
+
         APP_flight_control_motor();
         vTaskDelayUntil(&xLastWakeTime, FLIGHT_CONTROL_TASK_DELAY_MS);
     }
