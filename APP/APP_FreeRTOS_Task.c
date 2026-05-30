@@ -132,7 +132,7 @@ void flight_control_task(void *pvParameters)
         APP_flight_pid_process();
         //执行飞行控制任务的功能
         //定高判断
-        if (aircraft_state.flight_state == FLIGHT_HEIGHT)
+        if (aircraft_state.flight_state == FLIGHT_HEIGHT || aircraft_state.flight_state == FLIGHT_FALLING)
         {
             count++;
             if (count >= 4)

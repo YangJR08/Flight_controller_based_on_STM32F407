@@ -1,6 +1,8 @@
 #include "APP_receive_data.h"
 #include "APP_FreeRTOS_Task.h"
 #include "Com_config.h"
+#include "portmacro.h"
+#include "projdefs.h"
 #include <stdint.h>
 
 //yaw，pit，roll初始值500
@@ -191,6 +193,7 @@ void APP_process_flight_state(void)
             else if (aircraft_state.remote_state == REMOTE_DISCONNECTED)
             {
                 aircraft_state.flight_state = FLIGHT_FALLING;
+                fix_height_target = Int_VL53L1X_GetDistance();
             }
             break;
         case FLIGHT_HEIGHT:
@@ -202,16 +205,18 @@ void APP_process_flight_state(void)
                     remote_data.altitude = 0;
                 }
                 //定高状态下的故障判断
-               if (aircraft_state.remote_state == REMOTE_DISCONNECTED)
-               {
+                if (aircraft_state.remote_state == REMOTE_DISCONNECTED)
+                {
                     aircraft_state.flight_state = FLIGHT_FALLING;
+                    fix_height_target = Int_VL53L1X_GetDistance();
                 }
             }
             break;
         case FLIGHT_FALLING:
             {
                 //处理失联故障缓慢停止电机，后续实现
-
+                
+                ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
                 aircraft_state.flight_state = FLIGHT_IDLE; // 这里直接切换回空闲状态，实际应用中可以添加更多的故障处理逻辑，如触发降落伞、发送警报等
             }
             break;

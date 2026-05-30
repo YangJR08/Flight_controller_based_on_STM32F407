@@ -1,4 +1,5 @@
 #include "APP_Flight.h"
+#include "APP_FreeRTOS_Task.h"
 #include "APP_receive_data.h"
 #include "Com_imu.h"
 #include "com_debug.h"
@@ -104,6 +105,9 @@ PID_TypeDef fix_height_pid = {
     .integral = 0.0f,
     .output = 0.0f
 };
+// Falling state parameters
+#define FALL_LAND_HEIGHT_MM 50U
+#define FALL_TARGET_STEP_MM 2U
 /*-------PID------*/
 
 void APP_Flight_Init(void)
@@ -224,6 +228,25 @@ void APP_flight_control_motor(void)
             motor_con[MOTOR_RIGHT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output + roll_rate_pid.output + yaw_rate_pid.output + fix_height_pid.output;
             break;
         case FLIGHT_FALLING:
+            // PID-assisted descent with a ramped height target
+            yaw_rate_pid.output = Com_Limit(yaw_rate_pid.output, -100, 100);
+            motor_con[MOTOR_LEFT_UP].duty_cycle = remote_data.throttle + pitch_rate_pid.output - roll_rate_pid.output + yaw_rate_pid.output + fix_height_pid.output;
+            motor_con[MOTOR_LEFT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output - roll_rate_pid.output - yaw_rate_pid.output + fix_height_pid.output;
+            motor_con[MOTOR_RIGHT_UP].duty_cycle = remote_data.throttle + pitch_rate_pid.output + roll_rate_pid.output - yaw_rate_pid.output + fix_height_pid.output;
+            motor_con[MOTOR_RIGHT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output + roll_rate_pid.output + yaw_rate_pid.output + fix_height_pid.output;
+
+            for(int i=0;i<MOTOR_NUM;i++)
+            {
+                motor_con[i].duty_cycle = Com_Limit(motor_con[i].duty_cycle, 0, 600);
+                Int_motor_set_speed(&motor_con[i]);
+            }
+
+            uint16_t current_height = Int_VL53L1X_GetDistance();
+            if(current_height <= FALL_LAND_HEIGHT_MM)
+            {
+                xTaskNotifyGive(com_task_handle);
+            }
+            break;
 
     }
 
@@ -251,6 +274,17 @@ void APP_flight_fix_height_pid_process(void)
 {
     //24ms一次
     //填写目标值，按下定高键时的值时目标值，测量值就是当前高度
+    if(aircraft_state.flight_state == FLIGHT_FALLING)
+    {
+        if(fix_height_target > (FALL_LAND_HEIGHT_MM + FALL_TARGET_STEP_MM))
+        {
+            fix_height_target -= FALL_TARGET_STEP_MM;
+        }
+        else
+        {
+            fix_height_target = FALL_LAND_HEIGHT_MM;
+        }
+    }
     fix_height_pid.desire = fix_height_target;
     fix_height_pid.measure = Int_VL53L1X_GetDistance();
 
