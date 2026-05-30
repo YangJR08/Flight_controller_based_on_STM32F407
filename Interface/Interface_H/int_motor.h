@@ -11,7 +11,7 @@ typedef struct
 {
     TIM_HandleTypeDef *htim; // 定时器句柄
     uint16_t channel;        // 定时器通道
-    uint16_t duty_cycle;       // 占空比，范围0-1000
+    int16_t duty_cycle;       // 占空比，范围0-1000
 } Motor_Struct;
 
 

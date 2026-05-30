@@ -21,9 +21,9 @@ Euler_Angle_struct euler_angle_data; // 定义一个全局变量来存储解算�
 /*-------PID------*/
 //俯仰角PID结构体
 PID_TypeDef pitch_pid = {
-    .kp = 1.0f, // 比例增益
-    .ki = 0.01f, // 积分增益
-    .kd = 0.1f, // 微分增益
+    .kp = -7.0f, // 比例增益
+    .ki = 0.0f, // 积分增益
+    .kd = 0.0f, // 微分增益
     .error = 0.0f,
     .desire = 0.0f,
     .measure = 0.0f,
@@ -33,9 +33,9 @@ PID_TypeDef pitch_pid = {
 };
 //俯仰角的内环PID结构体，Y轴角速度PID
 PID_TypeDef pitch_rate_pid = {
-    .kp = 0.5f, // 比例增益
-    .ki = 0.005f, // 积分增益
-    .kd = 0.05f, // 微分增益
+    .kp = 3.0f, // 比例增益
+    .ki = 0.0f, // 积分增益
+    .kd = 0.5f, // 微分增益
     .error = 0.0f,
     .desire = 0.0f,
     .measure = 0.0f,
@@ -43,8 +43,54 @@ PID_TypeDef pitch_rate_pid = {
     .integral = 0.0f,
     .output = 0.0f
 };
-
-
+//横滚角PID结构体
+PID_TypeDef roll_pid = {
+    .kp = -7.0f, // 比例增益
+    .ki = 0.0f, // 积分增益
+    .kd = 0.0f, // 微分增益
+    .error = 0.0f,
+    .desire = 0.0f,
+    .measure = 0.0f,
+    .last_error = 0.0f,
+    .integral = 0.0f,
+    .output = 0.0f
+};
+//横滚角的内环PID结构体，X轴角速度PID
+PID_TypeDef roll_rate_pid = {
+    .kp = 3.0f, // 比例增益
+    .ki = 0.0f, // 积分增益
+    .kd = 0.5f, // 微分增益
+    .error = 0.0f,
+    .desire = 0.0f,
+    .measure = 0.0f,
+    .last_error = 0.0f,
+    .integral = 0.0f,
+    .output = 0.0f
+};
+//偏航角PID结构体
+PID_TypeDef yaw_pid = {
+    .kp = -3.0f, // 比例增益
+    .ki = 0.0f, // 积分增益
+    .kd = 0.0f, // 微分增益
+    .error = 0.0f,
+    .desire = 0.0f,
+    .measure = 0.0f,
+    .last_error = 0.0f,
+    .integral = 0.0f,
+    .output = 0.0f
+};
+//偏航角的内环PID结构体，Z轴角速度PID
+PID_TypeDef yaw_rate_pid = {
+    .kp = -5.0f, // 比例增益
+    .ki = 0.0f, // 积分增益
+    .kd = 0.0f, // 微分增益
+    .error = 0.0f,
+    .desire = 0.0f,
+    .measure = 0.0f,
+    .last_error = 0.0f,
+    .integral = 0.0f,
+    .output = 0.0f
+};
 /*-------PID------*/
 
 void APP_Flight_Init(void)
@@ -102,9 +148,31 @@ void APP_flight_pid_process(void)
 
     //计算双环PID
     Com_PID_Calculate_Chain(&pitch_pid, &pitch_rate_pid);
-    debug_printf(":%f,%f,%f\n", pitch_pid.error,pitch_pid.output, pitch_rate_pid.output);
+    //debug_printf(":%f,%f,%f\n", pitch_pid.error,pitch_pid.output, pitch_rate_pid.output);
 
+    //对横滚角进行PID计算
+    roll_pid.desire = (remote_data.roll - 500) * 0.02f; // 期望值，这里假设我们希望保持水平飞行，所以期望值为0度
+    roll_pid.measure = euler_angle_data.roll; // 测量值，当前的横滚角
 
+    //内环PID计算，期望值是外环的输出，测量值是当前的角速度
+    roll_rate_pid.desire = roll_pid.output; // 期望值，外环PID的输出
+    roll_rate_pid.measure = gyro_accel_data.gyro.gyro_x;
+
+    //计算双环PID
+    Com_PID_Calculate_Chain(&roll_pid, &roll_rate_pid);
+    //debug_printf(":%f,%f,%f\n", roll_pid.error,roll_pid.output, roll_rate_pid.output);
+    
+    //对偏航角进行PID计算
+    yaw_pid.desire = (remote_data.yaw - 500) * 0.02f; // 期望值，这里假设我们希望保持水平飞行，所以期望值为0度
+    yaw_pid.measure = euler_angle_data.yaw; // 测量值，当前的偏航角
+
+    //内环PID计算，期望值是外环的输出，测量值是当前的角速度
+    yaw_rate_pid.desire = yaw_pid.output; // 期望值，外环PID的输出
+    yaw_rate_pid.measure = gyro_accel_data.gyro.gyro_z;
+
+    //计算双环PID
+    Com_PID_Calculate_Chain(&yaw_pid, &yaw_rate_pid);
+    //debug_printf(":%f,%f,%f\n", yaw_pid.error,yaw_pid.output, yaw_rate_pid.output);
 }
 
 //根据PID的输出来控制电机的速度
@@ -123,17 +191,59 @@ void APP_flight_control_motor(void)
         case FLIGHT_NORMAL:
             //俯仰角向前飞有角速度，有向后飞，前两个电机转的快，后两个转的慢
             //正常飞行，根据PID输出控制电机速度
-            motor_con[MOTOR_LEFT_UP].duty_cycle = remote_data.throttle + pitch_rate_pid.output;
-            motor_con[MOTOR_LEFT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output;
-            motor_con[MOTOR_RIGHT_UP].duty_cycle = remote_data.throttle + pitch_rate_pid.output;
-            motor_con[MOTOR_RIGHT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output;
+            //偏航角是对角线一组进行调节
+            //对偏航角pid输出进行限制
+            yaw_rate_pid.output = Com_Limit(yaw_rate_pid.output, -100, 100);
+            motor_con[MOTOR_LEFT_UP].duty_cycle = remote_data.throttle + pitch_rate_pid.output - roll_rate_pid.output + yaw_rate_pid.output;
+            motor_con[MOTOR_LEFT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output - roll_rate_pid.output - yaw_rate_pid.output;
+            motor_con[MOTOR_RIGHT_UP].duty_cycle = remote_data.throttle + pitch_rate_pid.output + roll_rate_pid.output - yaw_rate_pid.output;
+            motor_con[MOTOR_RIGHT_DOWN].duty_cycle = remote_data.throttle - pitch_rate_pid.output + roll_rate_pid.output + yaw_rate_pid.output;
             break;
+        case FLIGHT_HEIGHT:
+            //定高中飞行，保持一定的高度，电机速度根据高度误差来调整，这里我们假设定高值为1米，实际应用中可以根据需要来设置定高值
+            if(remote_data.altitude > 1)
+            {
+                //高度过高，降低电机速度
+                for(int i=0;i<MOTOR_NUM;i++)
+                {
+                    motor_con[i].duty_cycle = remote_data.throttle - 50; // 这里假设我们降低50的占空比来降低高度，实际应用中可以根据需要来调整这个值
+                }
+            }
+            else if(remote_data.altitude < 1)
+            {
+                //高度过低，提高电机速度
+                for(int i=0;i<MOTOR_NUM;i++)
+                {
+                    motor_con[i].duty_cycle = remote_data.throttle + 50; // 这里假设我们提高50的占空比来提高高度，实际应用中可以根据需要来调整这个值
+                }
+            }
+            else
+            {
+                //高度合适，保持当前电机速度
+                for(int i=0;i<MOTOR_NUM;i++)
+                {
+                    motor_con[i].duty_cycle = remote_data.throttle;
+                }
+            }
+            break;
+        case FLIGHT_FALLING:
+
     }
 
-
-    //设置电机速度
-    for(int i=0;i<MOTOR_NUM;i++)
+    //安全限制，当油门设置小于50时，强制电机停止，避免飞行器失控
+    if(remote_data.throttle < 50)
     {
-        Int_motor_set_speed(&motor_con[i]);
+        for(int i=0;i<MOTOR_NUM;i++)
+        {
+            motor_con[i].duty_cycle = 0;
+        }
+
+        //设置电机速度
+        for(int i=0;i<MOTOR_NUM;i++)
+        {   
+            //其实在电机控制中也对占空比进行了600的限制
+            motor_con[i].duty_cycle = Com_Limit(motor_con[i].duty_cycle, 0, 600);
+            Int_motor_set_speed(&motor_con[i]);
+        }
     }
 }

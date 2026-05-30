@@ -32,3 +32,15 @@ void Com_PID_Calculate_Chain(PID_TypeDef *pid_outer, PID_TypeDef *pid_inner)
     // 计算内环PID
     Com_PID_Calculate(pid_inner);
 }
+
+//限制电机速度在正常范围内
+int16_t Com_Limit(int16_t speed, int16_t min, int16_t max)
+{
+    if (speed > max) {
+        return max;
+    } else if (speed < min) {
+        return min;
+    } else {
+        return speed;
+    }
+}

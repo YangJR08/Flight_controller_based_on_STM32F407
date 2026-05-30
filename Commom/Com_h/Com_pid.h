@@ -2,6 +2,8 @@
 #define COM_PID_H
 
 //定义积分时间由任务时间决定
+#include <stdint.h>
+#include "main.h"
 #define PID_TASK_TIME 0.006 // 6ms
 
 // PID结构体
@@ -24,5 +26,8 @@ void Com_PID_Calculate(PID_TypeDef *pid);
 
 //串级PID计算
 void Com_PID_Calculate_Chain(PID_TypeDef *pid_outer, PID_TypeDef *pid_inner);
+
+//限制电机速度在正常范围内
+int16_t Com_Limit(int16_t speed, int16_t min, int16_t max);
 
 #endif // COM_PID_H
